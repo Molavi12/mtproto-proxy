@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  mtproto-proxy:
+    build: .
+    ports:
+      - "443:443"
+      - "80:80"
+    restart: unless-stopped
+    environment:
+      - SECRET=00aa000000000000000000000000000000
