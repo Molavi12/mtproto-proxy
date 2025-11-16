@@ -2,7 +2,7 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies
+# Update and install dependencies with clean apt
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
@@ -11,25 +11,37 @@ RUN apt-get update && \
     tar \
     make \
     gcc \
+    g++ \
     zlib1g-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Download MTProxy using curl instead of git
-RUN cd /tmp && \
-    curl -L -o mtproxy.tar.gz https://github.com/TelegramMessenger/MTProxy/archive/master.tar.gz && \
+# Create directory and set permissions
+RUN mkdir -p /app && chmod 755 /app
+
+WORKDIR /app
+
+# Download and extract MTProxy
+RUN curl -L -o mtproxy.tar.gz https://github.com/TelegramMessenger/MTProxy/archive/master.tar.gz && \
     tar -xzf mtproxy.tar.gz && \
-    mv MTProxy-master /MTProxy && \
-    cd /MTProxy && \
-    make
+    mv MTProxy-master MTProxy && \
+    rm mtproxy.tar.gz
+
+# Build MTProxy
+WORKDIR /app/MTProxy
+RUN make
+
+# Create runtime directory
+RUN mkdir -p /var/run/mtproxy
+
+WORKDIR /app/MTProxy/objs/bin
 
 EXPOSE 443
 
-CMD cd /MTProxy/objs/bin && \
-    SECRET=$(head -c 16 /dev/urandom | xxd -ps) && \
-    echo "===========================================" && \
-    echo "✅ MTProto Proxy is running!" && \
+CMD SECRET=$(head -c 16 /dev/urandom | xxd -ps) && \
+    echo "🚀 MTProto Proxy Started!" && \
     echo "🔑 Secret: $SECRET" && \
     echo "📍 Port: 443" && \
-    echo "📱 Use this in Telegram proxy settings" && \
-    echo "===========================================" && \
+    echo "📱 Add this proxy in Telegram settings" && \
+    echo "======================================" && \
     ./mtproto-proxy -u -p 8888 -H 443 -S "$SECRET" -M 1
