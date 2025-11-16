@@ -1,0 +1,61 @@
+name: Deploy MTProto Proxy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Generate random secret
+      id: secret
+      run: |
+        SECRET=$(head -c 16 /dev/urandom | xxd -ps)
+        echo "SECRET=$SECRET" >> $GITHUB_ENV
+        echo "::add-mask::$SECRET"
+
+    - name: Update configuration files
+      run: |
+        # آپدیت فایل کانفیگ
+        sed -i "s/00aa000000000000000000000000000000/$SECRET/g" mtproxy.conf
+        sed -i "s/00aa000000000000000000000000000000/$SECRET/g" docker-compose.yml
+        
+        # آپدیت فایل start.sh
+        sed -i "s/head -c 16 \\/dev\\/urandom | xxd -ps/cat \\/etc\\/mtproxy.secret/g" start.sh
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        tags: mtproto-proxy:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Display proxy information
+      run: |
+        echo "✅ MTProto Proxy deployed successfully!"
+        echo "🔑 Secret: $SECRET"
+        echo "🌐 You can now use this proxy in Telegram"
+        echo "📝 Add this proxy in Telegram with:"
+        echo "   Host: YOUR_SERVER_IP"
+        echo "   Port: 443"
+        echo "   Secret: $SECRET"
+
+    - name: Upload configuration files
+      uses: actions/upload-artifact@v4
+      with:
+        name: mtproxy-config
+        path: |
+          mtproxy.conf
+          docker-compose.yml
+        retention-days: 30
