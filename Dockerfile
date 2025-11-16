@@ -2,11 +2,11 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install git and dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     build-essential \
-    git \
+    wget \
+    tar \
     make \
     gcc \
     g++ \
@@ -14,10 +14,15 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone directly with git
-RUN git clone https://github.com/TelegramMessenger/MTProxy.git /MTProxy && \
-    cd /MTProxy && \
-    make
+# Download specific release or commit
+RUN wget -O mtproxy.tar.gz "https://github.com/TelegramMessenger/MTProxy/archive/refs/heads/master.tar.gz" && \
+    tar -xzf mtproxy.tar.gz && \
+    mv MTProxy-master /MTProxy && \
+    rm mtproxy.tar.gz
+
+WORKDIR /MTProxy
+
+RUN make
 
 WORKDIR /MTProxy/objs/bin
 
